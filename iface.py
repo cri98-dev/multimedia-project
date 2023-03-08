@@ -15,8 +15,8 @@ def ask_what_to_do() -> str:
 
     - hide data into image (h)
     - retrieve data from image (r)
-    - plot channels histogram of image (p) 
-    - save image channels as images (s)
+    - plot image channels histogram (p) 
+    - save image channels as separate images (s)
     - evaluate PSNR and SSIM between two images (m)
     - benchmark available bits embedding algorithms (b)
 
