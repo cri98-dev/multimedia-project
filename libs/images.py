@@ -4,13 +4,76 @@ import random
 import copy
 from matplotlib import pyplot as plt
 import os
+import skimage
+import numpy as np
 
-supported_modes = ['RGB', 'RGBA']
 
-
-
-def image_mode_is_supported(img_path:str) ->  bool:
+def image_mode_is_supported(img_path:str, supported_modes) ->  bool:
     return Image.open(img_path).mode in supported_modes
+
+
+def skimage_lab_conversion(image_path:str):
+    img = skimage.io.imread(image_path)
+    # if img.shape[-1] == 4:
+    #     print(f'Image {image_path} is RGBA. Converting to RGB before continuing... ', end='')
+    #     img = skimage.color.rgba2rgb(img)
+    #     print('done')
+    rgb2lab = skimage.color.rgb2lab(img)
+    l = rgb2lab[:, :, 0]
+    a = rgb2lab[:, :, 1]
+    b = rgb2lab[:, :, 2]
+    return l,a,b
+
+
+
+def get_lab_repr(image_path:str):
+    l,a,b = skimage_lab_conversion(image_path)
+    return l,a,b
+
+
+def skimage_rgb_conversion(lab_image_array):
+    rgb_image = skimage.color.lab2rgb(lab_image_array)
+    return rgb_image
+
+
+def save_chrominance_channels_diffs_as_fig(chrominance_channels_dict:dict, as_magnitudes=False, suptitle=None, main_out_dir:str='./outputs') -> None:
+    out_dir = os.path.join(main_out_dir, 'plots')
+    os.makedirs(out_dir, exist_ok=True)
+
+    fontsize = 13
+
+    fig = plt.figure(figsize=(14,8))
+    for i,k in enumerate(chrominance_channels_dict.keys()):
+            plt.subplot(2,3,1+i)
+            data = chrominance_channels_dict[k]
+            title = k
+            if as_magnitudes:
+                data = np.log(0.1+np.abs(np.fft.fftshift(np.fft.fft2(data, norm='ortho'))))
+                title = f'M{title}'
+            plt.imshow(data)
+            plt.title(title, fontsize=fontsize)
+            plt.axis('off')
+
+    if suptitle:
+        fig.suptitle(suptitle, fontsize=fontsize+2, fontweight='bold')
+
+    out_name='chrominance_channels_before_and_after_embedding.png'
+    if as_magnitudes:
+        out_name = out_name.replace('s_b', 's_magnitudes_b')
+
+    fig_out_path = os.path.join(out_dir, out_name)
+    fig.savefig(fig_out_path)
+    print(f'File saved at {fig_out_path}')
+
+
+
+def get_pixels_values(img_path:str) -> Tuple[list, Tuple[int, int]]:
+    img = Image.open(img_path)
+    # if img.mode != 'L':
+    #     print(f'Image {img_path} is not black and white. Converting to black and white before continuing... ', end='')
+    #     img = img.convert('L')
+    #     print('done.')
+    return list(img.getdata()), img.size
 
 
 def get_editable_channels_list(img_path:str) -> List[Tuple[int, int]]:
@@ -128,6 +191,7 @@ def save_image_channels_histogram(img_path:str, main_out_dir:str='./outputs') ->
         counts = img.getchannel(c).histogram()
         bins = range(len(counts))
         plt.hist(x=bins, bins=bins, weights=counts, color=c.lower() if c != 'A' else 'black')
+        # plt.bar(x=bins, height=counts, width=0.8, color=c.lower() if c != 'A' else 'black')
         plt.title(f'{c}')
         plt.xlabel('pixel value')
         plt.ylabel('count')
